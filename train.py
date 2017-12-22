@@ -5,7 +5,7 @@ import os
 import utils
 import codecs
 from classifier_cnn import CNNClassifier
-
+import numpy as np
 # Parameters
 # ==================================================
 
@@ -149,22 +149,30 @@ with tf.Graph().as_default():
             train_summary_writer.add_summary(summaries, step)
 
 
-        def dev_step(x_batch, y_batch, writer=None):
+        def dev_step(x_batch, y_batch, batch_size=32,writer=None):
             """
             Evaluates model on a dev set
             """
-            feed_dict = {
-                cnn.input_x: x_batch,
-                cnn.input_y: y_batch,
-                cnn.dropout_keep_prob: 1.0
-            }
-            step, summaries, loss, accuracy = sess.run(
-                [global_step, dev_summary_op, cnn.loss, cnn.accuracy],
-                feed_dict)
+            steps = []
+            summaries = []
+            losses = []
+            accuracies = []
+            for i in range(0,len(y_batch),batch_size):
+                feed_dict = {
+                    cnn.input_x: x_batch[i:i+batch_size],
+                    cnn.input_y: y_batch[i:i+batch_size],
+                    cnn.dropout_keep_prob: 1.0
+                }
+                step, summaries, loss, accuracy = sess.run(
+                    [global_step, dev_summary_op, cnn.loss, cnn.accuracy],
+                    feed_dict)
+                steps.append(step)
+                losses.append(loss)
+                accuracies.append(accuracy)
             time_str = datetime.datetime.now().isoformat()
-            print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
+            print("{}: step {}, loss {:g}, acc {:g}".format(time_str, np.mean(steps), np.mean(losses), np.mean(accuracies)))
             if writer:
-                writer.add_summary(summaries, step)
+                writer.add_summary(summaries, np.mean(steps))
 
 
         batches = utils.batch_iter(
